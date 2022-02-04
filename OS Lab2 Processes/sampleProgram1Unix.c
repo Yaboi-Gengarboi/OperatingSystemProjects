@@ -3,10 +3,10 @@
 // Obtained from https://alaska.instructure.com/courses/6364/assignments/115215 on 2022-01-31
 // Last modified on 2022-02-03 by Justyn Durnford
 
-// This program is intended to be run the Unix terminal.
-// Find the location of "OSLab2Processes.out" and run the terminal
+// This program is intended to be run on the Unix terminal.
+// Find the location of "sampleProgram1Unix.out" and run the terminal
 // in the same directory.
-// Type: ./OSLab2Processes.out and hit enter.
+// Type: ./sampleProgram1Unix.out and hit enter.
 // Press CTRL and C on the keyboard and see the results!
 
 #if defined(__unix__)

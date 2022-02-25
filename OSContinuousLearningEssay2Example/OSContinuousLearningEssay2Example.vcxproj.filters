@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="sampleProgram2Windows.c">
+    <ClCompile Include="demoMultiThread.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

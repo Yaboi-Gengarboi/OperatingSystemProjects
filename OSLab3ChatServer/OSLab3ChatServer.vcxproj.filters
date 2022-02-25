@@ -15,7 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="sampleProgram2Windows.c">
+    <ClCompile Include="demoServer.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="demoClient.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -1,5 +1,5 @@
 // OSLab3ChatServer
-// demoClient.c
+// demoClientUnix.c
 // Downloaded from https://alaska.instructure.com/courses/6364/files/1441843?module_item_id=377680
 // Last modified on 2022-02-25 by Justyn Durnford
 // Client side C program to demonstrate Socket programming.
@@ -16,6 +16,8 @@
    
 int main(int argc, char* argv[])
 {
+    printf("Now executing demoClientUnix\n");
+
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
 
@@ -28,6 +30,8 @@ int main(int argc, char* argv[])
         perror("Socket creation failed.\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("Socket creation successful.\n");
    
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORT);
@@ -35,15 +39,19 @@ int main(int argc, char* argv[])
     // Convert IPv4 and IPv6 addresses from text to binary form.
     if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) 
     {
-        printf("Invalid address/Address not supported.\n");
+        perror("Invalid address/Address not supported.\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("Address conversion successful.\n");
    
     if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0)
     {
-        printf("Connection Failed.\n");
+        perror("Connection Failed.\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("Connection successful.\n");
 
     send(sock, hello, strlen(hello), 0);
     printf("Hello message sent.\n");

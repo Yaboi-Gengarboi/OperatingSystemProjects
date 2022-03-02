@@ -19,8 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="demoClientUnix.c" />
-    <ClCompile Include="demoServerUnix.c" />
+    <ClCompile Include="demoClient.cpp" />
+    <ClCompile Include="demoServer.cpp" />
+    <ClCompile Include="test.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

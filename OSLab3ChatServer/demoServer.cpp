@@ -19,9 +19,9 @@
 
 #define PORT 8080
 
-std::string One_to_Two;
-std::string Two_to_One;
-bool mail[2] = {0};
+std::string one2two;
+std::string two2one;
+bool mail[2];
 
 void sig_handler(int signo)
 {
@@ -29,76 +29,53 @@ void sig_handler(int signo)
         std::cout << "Received SIGINT\n";
 }
 
-void sendMail(int new_socket, int position) 
-{
-    std::string myMessage;
-    std::string preface;
-    
-    std::cout << position << " has sendMail running!\n";
-    
-    if (position == 0) 
-        std::string preface = "The message Client 0 sent was: ";
-    if (position == 1) 
-        std::string preface = "The message Client 1 sent was: ";
-        
-    std::string reply;
-    
-    while (true) 
-    {
-        if (position == 0) 
-            myMessage = One_to_Two;
-        else 
-            myMessage = Two_to_One;
-        
-        if (mail[position] == true) 
-        {
-            mail[position] = false;
-            reply = preface + myMessage;
-            send(new_socket, reply.c_str(), reply.size(), 0);
-            std::cout << "Message sent!\n\n";
-        }
-    }
-}
-
 void getMail(int new_socket, int position) 
 {
-    std::cout << position << " has getMail running!\n";
     int valread;
-    std::string theirMessage;
-    std::string returnMessage = "Got the message!\n";
     std::string buffer(1024, 0);
     
     while (true) 
     {  
-        if (position == 1) 
-            theirMessage = One_to_Two;
-        else 
-            theirMessage = Two_to_One;
-            
-        for (int i = 0; i < 1024; ++i) 
-            buffer[i] = 0;
-        
         valread = read(new_socket, buffer.data(), 1024);
         
-        if (position == 1) 
+        if (position == 0) 
         {
-            One_to_Two = theirMessage; 
-            sleep(1); 
-            mail[0] = true;
-        }
-        else 
-        {
-            Two_to_One = theirMessage; 
+            std::cout << "Client1 sent a message: " << buffer << '\n';
+            one2two = buffer; 
             sleep(1); 
             mail[1] = true;
         }
-        
-        std::cout << "Their message is: " << theirMessage << '\n';
-        send(new_socket, returnMessage.c_str(), returnMessage.size(), 0);
+        else 
+        {
+            std::cout << "Client2 sent a message: " << buffer << '\n';
+            two2one = buffer; 
+            sleep(1); 
+            mail[0] = true;
+        }
     }
 }
 
-void ServerFunc(std::string myMessage, std::string theirMessage, int position, bool mail[2]) 
+void sendMail(int new_socket, int position) 
+{
+    while (true) 
+    {
+        if (mail[0])
+        {
+            std::cout << "Sending a message to Client1: " << two2one << '\n';
+            send(new_socket, two2one.c_str(), two2one.size(), 0);
+            mail[0] = false;
+        }
+        
+        if (mail[1])
+        {
+            std::cout << "Sending a message to Client2: " << one2two << '\n';
+            send(new_socket, one2two.c_str(), one2two.size(), 0);
+            mail[1] = false;
+        }
+    }
+}
+
+void ServerFunc(int position) 
 {
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
@@ -156,9 +133,8 @@ int main(int argc, char* argv[])
     if (signal(SIGINT, sig_handler) == SIG_ERR) 
         std::cout << "\ncan't catch SIGINT\n";
     
-    std::cout << "Starting the threads.\n";
-    std::thread firstUser(ServerFunc, One_to_Two, Two_to_One, 0, mail);
-    std::thread secondUser(ServerFunc, Two_to_One, One_to_Two, 1, mail);
+    std::thread firstUser(ServerFunc, 0);
+    std::thread secondUser(ServerFunc, 1);
     
     firstUser.join();
     secondUser.join();

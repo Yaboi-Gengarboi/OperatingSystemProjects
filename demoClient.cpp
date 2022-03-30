@@ -16,6 +16,31 @@
 #include <thread>
 
 #define PORT 8080
+#define LENGTH 1024
+
+void checkMail(int sock, std::string& buffer) 
+{
+    int valread;
+    std::cout << "I have checkMail running.\n";
+    
+    while(true) 
+    {
+        valread = read(sock, buffer.data(), LENGTH);
+        std::cout << "I have a message! The message is: " << buffer << '\n';
+    }
+}
+
+void sendMail(int sock) 
+{
+    std::string input;
+    std::cout << "I have sendMail running.\n";
+    
+    while(true)
+    {
+        std::getline(std::cin, input);
+        send(sock, input.c_str(), LENGTH, 0);
+    }
+}
    
 int main(int argc, char* argv[])
 {
@@ -23,12 +48,12 @@ int main(int argc, char* argv[])
     struct sockaddr_in serv_addr;
     
     std::string input;
-    std::string buffer(1024, 0);
+    std::string buffer(LENGTH, 0);
     
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         std::cout << "\n Socket creation error \n";
-        exit(EXIT_FAILURE);
+        return -1;
     }
        
     serv_addr.sin_family = AF_INET;
@@ -38,25 +63,23 @@ int main(int argc, char* argv[])
     if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) 
     {
         printf("\nInvalid address/Address not supported \n");
-        exit(EXIT_FAILURE);
+        return -1;
     }
        
     if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
     {
         printf("\nConnection Failed \n");
-        exit(EXIT_FAILURE);
+        return -1;
     }
-    
-    while(true)
-    {
-        std::cout << "Enter a message.\n";
-        std::getline(std::cin, input);
-        send(sock, input.c_str(), input.size(), 0);
-        std::cout << "Sent a message.\n";
-        valread = read(sock, buffer.data(), buffer.size());
-        std::cout << buffer << '\n';
-    }
-    
+        
+    std::string start = "Greetings!\n";
+    send(sock, start.c_str(), LENGTH, 0);
+        
+    std::thread check(checkMail, sock, std::ref(buffer));
+    std::thread send(sendMail, sock);
+
+    check.join();
+    send.join();
     return 0;
 }
 

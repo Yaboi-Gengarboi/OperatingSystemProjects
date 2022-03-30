@@ -18,6 +18,7 @@
 #include <thread>
 
 #define PORT 8080
+#define LENGTH 1024
 
 std::string one2two;
 std::string two2one;
@@ -29,59 +30,83 @@ void sig_handler(int signo)
         std::cout << "Received SIGINT\n";
 }
 
+void sendMail(int new_socket, int position) 
+{
+    std::cout << position << " has sendMail running!\n";
+
+    std::string myMessage;
+    std::string preface;
+    std::string reply;
+    
+    if (position == 0) 
+        preface = "The message Client 0 sent was: ";
+    if (position == 1)
+        preface = "The message Client 1 sent was: ";
+    
+    while(true) 
+    {
+        if (position == 0) 
+            myMessage = one2two;
+        else 
+            myMessage = two2one;
+        
+        if(mail[position]) 
+        {
+            mail[position] = false;
+            reply = preface + myMessage;
+            std::cout << "I want to send " << position << " the message " << reply;
+            send(new_socket, reply.c_str(), LENGTH, 0);
+            std::cout << "Message sent!\n\n";
+        }
+    }
+}
+
 void getMail(int new_socket, int position) 
 {
-    int valread;
-    std::string buffer(1024, 0);
+    std::cout << position << " has getMail running!\n";
     
-    while (true) 
+    int valread;
+    std::string theirMessage;
+    std::string returnMessage = "Got the message!\n";
+    std::string buffer(LENGTH, 0);
+    
+    while(true) 
     {  
-        valread = read(new_socket, buffer.data(), 1024);
+        if (position == 1) 
+            theirMessage = one2two;
+        else 
+            theirMessage = two2one;
+            
+        for (int i = 0; i < LENGTH; i++) 
+            buffer[i] = 0;
+            
+        valread = read(new_socket, buffer.data(), LENGTH);
         
         if (position == 0) 
         {
-            std::cout << "Client1 sent a message: " << buffer << '\n';
-            one2two = buffer; 
-            sleep(1); 
-            mail[1] = true;
-        }
-        else 
-        {
-            std::cout << "Client2 sent a message: " << buffer << '\n';
-            two2one = buffer; 
+            one2two = theirMessage; 
             sleep(1); 
             mail[0] = true;
         }
-    }
-}
-
-void sendMail(int new_socket, int position) 
-{
-    while (true) 
-    {
-        if (mail[0])
+        else 
         {
-            std::cout << "Sending a message to Client1: " << two2one << '\n';
-            send(new_socket, two2one.c_str(), two2one.size(), 0);
-            mail[0] = false;
+            two2one = theirMessage; 
+            sleep(1); 
+            mail[1] = true;
         }
         
-        if (mail[1])
-        {
-            std::cout << "Sending a message to Client2: " << one2two << '\n';
-            send(new_socket, one2two.c_str(), one2two.size(), 0);
-            mail[1] = false;
-        }
+        std::cout << "Their message is: " << theirMessage << '\n';
+        send(new_socket, returnMessage.c_str(), LENGTH, 0);
     }
 }
 
-void ServerFunc(int position) 
+void ServerFunc(std::string myMessage, std::string theirMessage, int position) 
 {
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    std::string buffer(1024, 0);
+    std::string buffer(LENGTH, 0);
     
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -119,7 +144,8 @@ void ServerFunc(int position)
         perror("accept");
         exit(EXIT_FAILURE);
     }
-    printf("%i is starting the threads!\n", position);
+    
+    std::cout << position << " is starting the threads!\n";
     
     std::thread get(getMail, new_socket, position);
     std::thread send(sendMail, new_socket, position);
@@ -133,8 +159,9 @@ int main(int argc, char* argv[])
     if (signal(SIGINT, sig_handler) == SIG_ERR) 
         std::cout << "\ncan't catch SIGINT\n";
     
-    std::thread firstUser(ServerFunc, 0);
-    std::thread secondUser(ServerFunc, 1);
+    std::cout << "Starting the threads.\n";
+    std::thread firstUser(ServerFunc, std::ref(one2two), std::ref(two2one), 0);
+    std::thread secondUser(ServerFunc, std::ref(two2one), std::ref(one2two), 1);
     
     firstUser.join();
     secondUser.join();

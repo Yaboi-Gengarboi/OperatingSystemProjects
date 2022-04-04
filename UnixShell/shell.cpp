@@ -4,19 +4,26 @@
 // Last modified on April 4st, 2022
 // Note: Requires C++17 or later
 
-//#if defined(__unix__)
+// Important: Windows will throw a hissy-fit 
+// if you don't use its fancy fopen_s without this.
+#ifdef _WIN32
+#define _CRT_SECURE_NO_DEPRECATE
+#endif // #ifdef _WIN32
+
+#if defined(__unix__)
+
+#include <unistd.h>
+
+#endif // #if defined(__unix__)
 
 #include <cstdio>
 using std::FILE;
 using std::fclose;
+using std::fopen;
+using std::remove;
 
 #include <filesystem>
 using std::filesystem::current_path;
-
-#include <fstream>
-using std::FILE;
-using std::fclose;
-using std::fopen;
 
 #include <iostream>
 using std::cin;
@@ -56,21 +63,60 @@ void print(const vector<string>& vec)
 }
 
 // 
-bool create_file(const string& path)
+bool does_file_exist(const string& path)
 {
-	FILE* file = nullptr;
-
 	// Check if file already exists.
-	// fopen_s will return 0 if a file is successfully opened.
-	if (fopen_s(&file, path.c_str(), "r") == 0)
+	// fopen will return a valid FILE* if a file is successfully opened.
+	FILE* file = fopen(path.c_str(), "r");
+
+	if (file)
 	{
 		fclose(file);
+		return true;
+	}
+
+	return false;
+}
+
+// 
+bool create_file(const string& path)
+{
+	if (does_file_exist(path))
+	{
 		cout << "ERROR: Cannot create file: " << path << ": File already exists." << endl;
 		return false;
 	}
 
-	if (fopen_s(&file, path.c_str(), "w") == 0)
+	// File does not exist, so create it.
+	FILE* file = fopen(path.c_str(), "w");
+	if (file)
 		fclose(file);
+	else
+	{
+		cout << "ERROR: Cannot create file: " << path << endl;
+		return false;
+	}
+
+	return true;
+}
+
+// 
+bool remove_file(const string& path)
+{
+	if (does_file_exist(path))
+	{
+		// remove will return a non-zero value on error.
+		if (remove(path.c_str()))
+		{
+			cout << "ERROR: Could not remove file: " << path << endl;
+			return false;
+		}
+	}
+	else
+	{
+		cout << "ERROR: COuld not remove file: " << path << ": File does not exist." << endl;
+		return false;
+	}
 
 	return true;
 }
@@ -96,7 +142,15 @@ size_t get_tokens(vector<string>& tokens, string& line)
 // Prints the current directory followed by "> ".
 void print_directory()
 {
-	cout << current_path() << "> ";
+	cout << current_path();
+
+	#if defined(__unix__)
+		cout << "$ ";
+	#endif // #if defined(__unix__)
+
+	#ifdef _WIN32
+		cout << "> ";
+	#endif // #ifdef _WIN32
 }
 
 // Main loop for the shell.
@@ -130,8 +184,11 @@ void shell_loop()
 				cout << "echo _text_: Prints the given text." << endl;
 				cout << "exit: Exits the terminal." << endl;
 				cout << "print _text_: Prints the given text." << endl;
+				cout << "removefile _filepath_: Removes the given file." << endl;
+				cout << "rm _filepath_: Removes the given file." << endl;
 				cout << "stop: Exits the terminal." << endl;
 				cout << "touch _filepath_: Creates a file in the current directory." << endl;
+				cout << "unlink _filepath_: Removes the given file." << endl;
 			}
 			else if (tokens[i] == "touch" || tokens[i] == "createfile")
 			{
@@ -139,6 +196,13 @@ void shell_loop()
 					cout << "ERROR: No file name given." << endl;
 				else
 					create_file(tokens[i + 1]);
+			}
+			else if (tokens[i] == "rm" || tokens[i] == "unlink" || tokens[i] == "removefile")
+			{
+				if (i == tokens.size() - 1)
+					cout << "ERROR: No file name given." << endl;
+				else
+					remove_file(tokens[i + 1]);
 			}
 			else if (tokens[i] == "echo" || tokens[i] == "print")
 			{
@@ -159,5 +223,3 @@ int main(int argc, char** argv)
 	shell_loop();
 	return 0;
 }
-
-//#endif // #if defined(__unix__)

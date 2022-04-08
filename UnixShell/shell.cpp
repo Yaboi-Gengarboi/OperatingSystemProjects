@@ -1,13 +1,17 @@
 // shell.cpp
 // Made by Justyn Dunford and Dawson Hampton
 // Started March 21st, 2022
-// Last modified on April 4st, 2022
+// Last modified on April 8th, 2022
 // Note: Requires C++17 or later
+
+#ifdef _WIN32
 
 // Important: Windows will throw a hissy-fit 
 // if you don't use its fancy fopen_s without this.
-#ifdef _WIN32
 #define _CRT_SECURE_NO_DEPRECATE
+
+#include <windows.h>
+
 #endif // #ifdef _WIN32
 
 #if defined(__unix__)
@@ -16,14 +20,18 @@
 
 #endif // #if defined(__unix__)
 
+#include <algorithm>
+using std::find;
+
 #include <cstdio>
 using std::FILE;
 using std::fclose;
 using std::fopen;
-using std::remove;
 
 #include <filesystem>
+using std::filesystem::exists;
 using std::filesystem::current_path;
+using std::filesystem::remove;
 
 #include <iostream>
 using std::cin;
@@ -62,26 +70,30 @@ void print(const vector<string>& vec)
 	cout << vec.back() << " }" << endl;
 }
 
-// 
-bool does_file_exist(const string& path)
+// Takes every token of the vector and concatenates them, 
+// each seperated by a " " character.
+string concatenate(const vector<string>& vec, size_t begin)
 {
-	// Check if file already exists.
-	// fopen will return a valid FILE* if a file is successfully opened.
-	FILE* file = fopen(path.c_str(), "r");
+	string str;
+	size_t len = 0;
 
-	if (file)
-	{
-		fclose(file);
-		return true;
-	}
+	for (size_t i = begin; i < vec.size(); ++i)
+		len += vec[i].size() + 1;
 
-	return false;
+	str.reserve(len);
+
+	for (size_t i = begin; i < vec.size(); ++i)
+		str += vec[i] + " ";
+
+	return str;
 }
 
-// 
+// Creates the given file if it does not exist.
+// Returns true on success.
+// Returns false on error.
 bool create_file(const string& path)
 {
-	if (does_file_exist(path))
+	if (exists(path))
 	{
 		cout << "ERROR: Cannot create file: " << path << ": File already exists." << endl;
 		return false;
@@ -100,13 +112,15 @@ bool create_file(const string& path)
 	return true;
 }
 
-// 
+// Removes the given file if it does not exist.
+// Returns true on success.
+// Returns false on error.
 bool remove_file(const string& path)
 {
-	if (does_file_exist(path))
+	if (exists(path))
 	{
-		// remove will return a non-zero value on error.
-		if (remove(path.c_str()))
+		// remove will return false on error.
+		if (!remove(path))
 		{
 			cout << "ERROR: Could not remove file: " << path << endl;
 			return false;
@@ -114,7 +128,7 @@ bool remove_file(const string& path)
 	}
 	else
 	{
-		cout << "ERROR: COuld not remove file: " << path << ": File does not exist." << endl;
+		cout << "ERROR: Could not remove file: " << path << ": File does not exist." << endl;
 		return false;
 	}
 
@@ -153,6 +167,54 @@ void print_directory()
 	#endif // #ifdef _WIN32
 }
 
+// Sets the directory to the given directory.
+// Prints an error if unsuccessful.
+void set_directory(const string& dir)
+{
+	if (dir[0] == '~')
+	{
+		#ifdef _WIN32
+			SetCurrentDirectoryA(getenv("USERPROFILE"));
+
+			if (!SetCurrentDirectoryA(dir.c_str() + 1))
+				cout << "ERROR: Directory not found." << endl;
+		#endif // #ifdef _WIN32
+
+
+	}
+	else if (dir.find("..") != string::npos)
+	{
+		string subdir(dir);
+		size_t loc = 0;
+
+		while (loc != string::npos)
+		{
+			loc = subdir.find("..");
+
+			if (loc != string::npos)
+			{
+				#ifdef _WIN32
+					if (!SetCurrentDirectoryA(".."))
+						cout << "ERROR: Directory not found." << endl;
+					subdir = dir.substr(loc + 2);
+				#endif // #ifdef _WIN32 
+			}
+		}
+
+		#ifdef _WIN32
+			if (!SetCurrentDirectoryA(subdir.c_str()))
+				cout << "ERROR: Directory not found." << endl;
+		#endif // #ifdef _WIN32 
+	}
+	else
+	{
+		#ifdef _WIN32
+			if (!SetCurrentDirectoryA(dir.c_str()))
+				cout << "ERROR: Directory not found." << endl;
+		#endif // #ifdef _WIN32 
+	}
+}
+
 // Main loop for the shell.
 // Currently only loops once.
 void shell_loop()
@@ -175,44 +237,104 @@ void shell_loop()
 			line.resize(100);
 		}
 
-		for (size_t i = 0; i < get_tokens(tokens, line); ++i)
+		size_t token_count = get_tokens(tokens, line);
+
+		if (tokens[0] == "help" || tokens[0] == "commands")
 		{
-			if (tokens[i] == "help" || tokens[i] == "commands")
+			cout << endl;
+			cout << "Available commands: " << endl;
+			cout << "cd _directorypath_: Changes the current directory to the given directory." << endl;
+			cout << "changedirectory _directorypath_: Changes the current directory to the given directory." << endl;
+			cout << "createfile _filepath_: Creates a file in the current directory." << endl;
+			cout << "echo _text_: Prints the given text." << endl;
+			cout << "exit: Exits the terminal." << endl;
+			cout << "list: Lists every file and directory in the current directory." << endl;
+			cout << "ls: Lists every file and directory in the current directory." << endl;
+			cout << "print: Prints the ID of the current process." << endl;
+			cout << "quit: Exits the terminal." << endl;
+			cout << "removefile _filepath_: Removes the given file." << endl;
+			cout << "repeat _text_: Prints the given text." << endl;
+			cout << "rm _filepath_: Removes the given file." << endl;
+			cout << "touch _filepath_: Creates a file in the current directory." << endl;
+			cout << "unlink _filepath_: Removes the given file." << endl;
+			cout << endl;
+		}
+		else if (tokens[0] == "touch" || tokens[0] == "createfile")
+		{
+			if (tokens.size() > 1)
+				create_file(tokens[1]);
+			else
+				cout << "ERROR: No file name given." << endl;
+		}
+		else if (tokens[0] == "rm" || tokens[0] == "unlink" || tokens[0] == "removefile")
+		{
+			if (tokens.size() > 1)
+				remove_file(tokens[1]);
+			else
+				cout << "ERROR: No file name given." << endl;
+		}
+		else if (tokens[0] == "echo" || tokens[0] == "repeat")
+		{
+			if (tokens.size() == 1)
+				cout << "ERROR: No text given." << endl;
+			else
 			{
-				cout << "Available commands: " << endl;
-				cout << "createfile _filepath_: Creates a file in the current directory." << endl;
-				cout << "echo _text_: Prints the given text." << endl;
-				cout << "exit: Exits the terminal." << endl;
-				cout << "print _text_: Prints the given text." << endl;
-				cout << "removefile _filepath_: Removes the given file." << endl;
-				cout << "rm _filepath_: Removes the given file." << endl;
-				cout << "stop: Exits the terminal." << endl;
-				cout << "touch _filepath_: Creates a file in the current directory." << endl;
-				cout << "unlink _filepath_: Removes the given file." << endl;
+				for (size_t i = 1; i < token_count; ++i)
+					cout << tokens[i] << endl;
 			}
-			else if (tokens[i] == "touch" || tokens[i] == "createfile")
+		}
+		else if (tokens[0] == "print")
+		{
+			#if defined(__unix__)
+				cout << "Current process ID: " << getpid() << endl;
+			#endif // #if defined(__unix__)
+
+			#ifdef _WIN32
+				cout << "Current process ID: " << GetCurrentProcessId() << endl;
+			#endif // _WIN32
+		}
+		else if (tokens[0] == "cd" || tokens[0] == "changedirectory")
+		{
+			if (tokens.size() == 1)
+				cout << "ERROR: No directory given." << endl;
+			else if (tokens[1] == "..")
 			{
-				if (i == tokens.size() - 1)
-					cout << "ERROR: No file name given." << endl;
-				else
-					create_file(tokens[i + 1]);
+				#if defined(__unix__)
+					chdir("..");
+				#endif // #if defined(__unix__)
+
+				#ifdef _WIN32
+					SetCurrentDirectoryA("..");
+				#endif // #ifdef _WIN32 
 			}
-			else if (tokens[i] == "rm" || tokens[i] == "unlink" || tokens[i] == "removefile")
+			else if (tokens[1] == "~")
 			{
-				if (i == tokens.size() - 1)
-					cout << "ERROR: No file name given." << endl;
-				else
-					remove_file(tokens[i + 1]);
+				#ifdef _WIN32
+					SetCurrentDirectoryA(getenv("USERPROFILE"));
+				#endif // #ifdef _WIN32
 			}
-			else if (tokens[i] == "echo" || tokens[i] == "print")
+			else
 			{
-				if (i == tokens.size() - 1)
-					cout << "ERROR: No text given." << endl;
-				else
-					cout << tokens[i + 1] << endl;
+				set_directory(concatenate(tokens, 1));
 			}
-			else if (tokens[i] == "exit" || tokens[i] == "stop")
-				exit(0);
+		}
+		else if (tokens[0] == "ls" || tokens[0] == "list")
+		{
+			#if defined(__unix__)
+				system("ls");
+			#endif // #if defined(__unix__)
+
+			#ifdef _WIN32
+				system("dir");
+			#endif // _WIN32
+		}
+		else if (tokens[0] == "exit" || tokens[0] == "quit")
+		{
+			exit(0);
+		}
+		else
+		{
+			cout << "ERROR: Unknown command: " << tokens[0] << endl;
 		}
 	}
 }

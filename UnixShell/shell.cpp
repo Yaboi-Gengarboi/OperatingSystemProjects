@@ -283,7 +283,7 @@ size_t get_tokens(vector<string>& tokens, string& line)
 			if ((token[i] < '0' || ('9' < token[i] && token[i] < 'A') ||
 				('Z' < token[i] && token[i] < 'a') || 'z' < token[i]) &&
 				(token[i] != '-' && token[i] != '.' && token[i] != '/' && 
-				token[i] != '_' && token[i] != '&' && token[i] != ';')) 
+				token[i] != '_' && token[i] != '&' && token[i] != ';' && token[i] != '~'))
 			{
 				cout << "Unrecognized letter '" << token[i] << "' of word '" << token << "'!" << endl;
 				bad_char = true;
@@ -441,9 +441,7 @@ void commandFunction(vector<string>& tokens, size_t token_count, int ppid, int p
 	{
 		if (tokens.size() > 1) 
 		{
-			mutex_file.lock();
 			create_file(tokens[1]);
-			mutex_file.unlock();
 		}
 		else 
 		{
@@ -456,9 +454,7 @@ void commandFunction(vector<string>& tokens, size_t token_count, int ppid, int p
 	{
 		if (tokens.size() > 1) 
 		{
-			mutex_file.lock();
 			remove_file(tokens[1]);
-			mutex_file.unlock();
 		}
 		else 
 		{
